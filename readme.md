@@ -22,13 +22,13 @@ Installing Jupyter Notebook is also highly recommanded since a detail tutorial i
 
 Then you will need to create a new python environnement to import the required libraries,
 you can do that with the following command in a terminal:
-    python3 -m venv .venv
+    `python3 -m venv .venv`
 and then:
-    source .venv/bin/activate
+    `source .venv/bin/activate`
 Finally to import all the libraries:
-    pip install -r requirements.txt
+    `pip install -r requirements.txt`
 
-Once the installation is done, you can open the Notebook Extract_ESRF-Data.ipynb
+Once the installation is done, you can open the Notebook `Extract_ESRF-Data.ipynb`
 Since datafile sizes are huge for ESRF (bm02), no example dataset is provided, contact me if you need an example. 
 
 
