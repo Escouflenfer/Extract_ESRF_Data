@@ -16,4 +16,5 @@ dist/
 _autosummary/
 .vscode
 .conda
+.venv
 ESRF_data/
