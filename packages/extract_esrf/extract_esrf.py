@@ -84,6 +84,67 @@ def _display_data(
     return None
 
 
+def _get_all_datasets(name, node):
+    """
+    Recursively iterate over all datasets in an HDF5 group and add their
+    names and values to a dictionary.
+
+    Parameters
+    ----------
+    name : str
+        The name of the current group
+    node : h5py.Group or h5py.Dataset
+        The current group or dataset in the HDF5 file
+
+    Returns
+    -------
+    None
+    """
+    global metadata_dict
+
+    if isinstance(node, h5py.Dataset):
+        name = '/'.join((node.name).split("/")[2:])
+
+        if isinstance(node[()], bytes):
+            val = node[()].decode()
+        elif node.ndim == 0:
+            val = str(node[()])
+        elif node.ndim == 1:
+            if node.size == 1:
+                val = str(node[0])
+            else:
+                val = ", ".join([f"{i:.5f}" for i in node[:].tolist()])
+        else:
+            return None
+
+        metadata_dict[name] = val
+        return None
+
+
+def _extract_integrated_metadata(h5_file, scan_number):
+    """
+    Extracts metadata from an HDF5 file corresponding to a given scan number.
+
+    Parameters
+    ----------
+    h5_file : h5py.File
+        The HDF5 file to extract metadata from
+    scan_number : int
+        The scan number to extract metadata for
+
+    Returns
+    -------
+    metadata_dict : dict
+        A dictionary of metadata
+    """
+    global metadata_dict
+    metadata_dict = {}
+
+    h5_file[f"{scan_number}.1/"].visititems(_get_all_datasets)
+
+    return metadata_dict
+
+
 def create_folders(*args):
     """
     Create a folder or folders if they do not already exist.
@@ -108,36 +169,40 @@ def create_folders(*args):
 
 
 def extract_CdTe_data(
-    foldername, scan_number, display=True, raw_data_path="./ESRF_data/RAW_DATA/"
+    foldername, scan_number, display=True, output_metadata=False, raw_data_path="./ESRF_data/RAW_DATA/"
 ):
     """
-    Extract 2D camera (CdTe) data from a raw .h5data file of a scan.
+    Extract data from a CdTe detector at ESRF BM02.
 
     Parameters
     ----------
     foldername : str
-        The name of the folder containing the raw data file
+        The name of the folder containing the data
     scan_number : int
         The number of the scan to extract
     display : bool, optional
-        If True, display the extracted data
+        If True, display the extracted data as an image
     raw_data_path : str, optional
-        The path to the raw data folder. By default, "./ESRF_data/RAW_DATA/"
+        The path to the directory containing the raw data. Defaults to "./ESRF_data/RAW_DATA/"
 
     Returns
     -------
     data : 2D array
-        The extracted 2D camera image acquisition
-
+        The extracted data
+    metadata : dict
+        A dictionary of the metadata extracted from the file
     """
     file = f"{foldername}_0001.h5"
     CdTe_img_group_path = f"{scan_number}.1/measurement/CdTe/"
     fullpath = raw_data_path / pathlib.Path(
         foldername + "/" + foldername + "_0001/" + file
     )
-    print(f'Looking inside "{fullpath}" in group path "{CdTe_img_group_path}"')
+    if not output_metadata:
+        print(f'Looking inside "{fullpath}" in group path "{CdTe_img_group_path}"')
 
     with h5py.File(fullpath, "r") as fh5:
+        metadata = _extract_integrated_metadata(fh5, scan_number)
+
         img = fh5[CdTe_img_group_path]
 
         if img.shape[0] != 1:
@@ -148,6 +213,9 @@ def extract_CdTe_data(
         data = img[()][0]
         if display:
             _display_data(img[0], plot_img=True)
+    
+    if output_metadata:
+        return data, metadata
 
     return data
 
@@ -187,7 +255,6 @@ def extract_integrated_data(
     fullpath = processed_data_path / pathlib.Path(
         foldername + "/" + foldername + "_0001/" + file
     )
-    # print(fullpath)
 
     with h5py.File(fullpath, "r") as fh5:
         counts = [
@@ -209,21 +276,25 @@ def extract_integrated_data(
 
 
 def save_integrated_data(
-    foldername, scan_number, data, saved_data_path="./ESRF_data/SAVED_DATA/"
+    foldername, scan_number, data, save_metadata=False, raw_data_path="./ESRF_data/RAW_DATA/", saved_data_path="./ESRF_data/SAVED_DATA/"
 ):
     """
-    Save integrated data to a file.
+    Save the integrated data from a scan to a .xy file.
 
     Parameters
     ----------
     foldername : str
-        The name of the folder to create and save the data in
+        The name of the folder containing the raw data file
     scan_number : int
-        The number of the scan to extract
-    data : list of lists
-        The list of theta values and the list of corresponding counts
+        The number of the scan to save
+    data : list or tuple
+        The data to save, where the first element is the theta values and the second element is the counts
+    save_metadata : bool, optional
+        If True, save the metadata for the scan in a separate file
+    raw_data_path : str, optional
+        The path to the raw data folder. By default, "./ESRF_data/RAW_DATA/"
     saved_data_path : str, optional
-        The path to the directory to save the data in. Defaults to "./ESRF_data/SAVED_DATA/"
+        The path to the saved data folder. By default, "./ESRF_data/SAVED_DATA/"
 
     Returns
     -------
@@ -238,7 +309,13 @@ def save_integrated_data(
         f"{foldername}/{foldername}_{scan_number}.xy"
     )
 
+    if save_metadata:
+        _raw_data, metadata = extract_CdTe_data(foldername, scan_number, display=False, output_metadata=True, raw_data_path=raw_data_path)
+
     with open(fullpath, "w") as sf:
+        if save_metadata:
+            for meta in metadata:
+                sf.write(f"#{meta}: {metadata[meta]}\n")
         for i, line in enumerate(data[0]):
             sf.write(f"{line}\t{data[1][i]}\n")
 
@@ -247,6 +324,7 @@ def save_integrated_data(
 
 def save_all_integrated(
     foldername,
+    raw_data_path="./ESRF_data/RAW_DATA/",
     processed_data_path="./ESRF_data/PROCESSED_DATA/",
     saved_data_path="./ESRF_data/SAVED_DATA/",
 ):
@@ -274,7 +352,7 @@ def save_all_integrated(
             display=False,
         )
         save_integrated_data(
-            foldername, scan_number, data, saved_data_path=saved_data_path
+            foldername, scan_number, data, save_metadata=True, raw_data_path=raw_data_path, saved_data_path=saved_data_path
         )
 
     print(

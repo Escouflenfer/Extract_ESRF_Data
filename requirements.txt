@@ -3,3 +3,4 @@ pathlib
 numpy
 matplotlib
 tqdm
+ipykernel
