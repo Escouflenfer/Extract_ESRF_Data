@@ -245,7 +245,11 @@ def save_integrated_data(
     return None
 
 
-def save_all_integrated(foldername, saved_data_path="./ESRF_data/SAVED_DATA/"):
+def save_all_integrated(
+    foldername,
+    processed_data_path="./ESRF_data/PROCESSED_DATA/",
+    saved_data_path="./ESRF_data/SAVED_DATA/",
+):
     """
     Save all integrated data from a folder to .xy files.
 
@@ -263,7 +267,12 @@ def save_all_integrated(foldername, saved_data_path="./ESRF_data/SAVED_DATA/"):
     scan_list = range(27, 316)
 
     for scan_number in tqdm(scan_list):
-        data = extract_integrated_data(foldername, scan_number, display=False)
+        data = extract_integrated_data(
+            foldername,
+            scan_number,
+            processed_data_path=processed_data_path,
+            display=False,
+        )
         save_integrated_data(
             foldername, scan_number, data, saved_data_path=saved_data_path
         )
