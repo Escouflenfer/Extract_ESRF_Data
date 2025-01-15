@@ -12,6 +12,7 @@ The code is structured as follows:
 """
 
 import h5py, pathlib, os
+import fabio
 import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm
@@ -103,7 +104,7 @@ def _get_all_datasets(name, node):
     global metadata_dict
 
     if isinstance(node, h5py.Dataset):
-        name = '/'.join((node.name).split("/")[2:])
+        name = "/".join((node.name).split("/")[2:])
 
         if isinstance(node[()], bytes):
             val = node[()].decode()
@@ -169,7 +170,11 @@ def create_folders(*args):
 
 
 def extract_CdTe_data(
-    foldername, scan_number, display=True, output_metadata=False, raw_data_path="./ESRF_data/RAW_DATA/"
+    foldername,
+    scan_number,
+    display=True,
+    output_metadata=False,
+    raw_data_path="./ESRF_data/RAW_DATA/",
 ):
     """
     Extract data from a CdTe detector at ESRF BM02.
@@ -213,7 +218,7 @@ def extract_CdTe_data(
         data = img[()][0]
         if display:
             _display_data(img[0], plot_img=True)
-    
+
     if output_metadata:
         return data, metadata
 
@@ -276,7 +281,12 @@ def extract_integrated_data(
 
 
 def save_integrated_data(
-    foldername, scan_number, data, save_metadata=False, raw_data_path="./ESRF_data/RAW_DATA/", saved_data_path="./ESRF_data/SAVED_DATA/"
+    foldername,
+    scan_number,
+    data,
+    save_metadata=False,
+    raw_data_path="./ESRF_data/RAW_DATA/",
+    saved_data_path="./ESRF_data/SAVED_DATA/",
 ):
     """
     Save the integrated data from a scan to a .xy file.
@@ -310,7 +320,13 @@ def save_integrated_data(
     )
 
     if save_metadata:
-        _raw_data, metadata = extract_CdTe_data(foldername, scan_number, display=False, output_metadata=True, raw_data_path=raw_data_path)
+        _raw_data, metadata = extract_CdTe_data(
+            foldername,
+            scan_number,
+            display=False,
+            output_metadata=True,
+            raw_data_path=raw_data_path,
+        )
 
     with open(fullpath, "w") as sf:
         if save_metadata:
@@ -322,11 +338,37 @@ def save_integrated_data(
     return None
 
 
+def save_CdTe_data(
+    foldername,
+    scan_number,
+    image,
+    custom_format="img",
+    saved_data_path="./ESRF_data/SAVED_DATA/",
+):
+    if foldername not in os.listdir(saved_data_path):
+        try:
+            os.mkdir(saved_data_path / pathlib.Path(foldername))
+        except FileExistsError:
+            pass
+    fullpath = saved_data_path / pathlib.Path(
+        f"{foldername}/{foldername}_{scan_number}.{custom_format}"
+    )
+
+    # Creating a new image with fabio
+    img_file = fabio.dtrekimage.DtrekImage()
+    img_file.data = image
+
+    img_file.save(fullpath)
+
+    return None
+
+
 def save_all_integrated(
     foldername,
     raw_data_path="./ESRF_data/RAW_DATA/",
     processed_data_path="./ESRF_data/PROCESSED_DATA/",
     saved_data_path="./ESRF_data/SAVED_DATA/",
+    custom_range=range(27, 316),
 ):
     """
     Save all integrated data from a folder to .xy files.
@@ -342,7 +384,7 @@ def save_all_integrated(
     -------
     None
     """
-    scan_list = range(27, 316)
+    scan_list = custom_range
 
     for scan_number in tqdm(scan_list):
         data = extract_integrated_data(
@@ -352,7 +394,12 @@ def save_all_integrated(
             display=False,
         )
         save_integrated_data(
-            foldername, scan_number, data, save_metadata=True, raw_data_path=raw_data_path, saved_data_path=saved_data_path
+            foldername,
+            scan_number,
+            data,
+            save_metadata=True,
+            raw_data_path=raw_data_path,
+            saved_data_path=saved_data_path,
         )
 
     print(
@@ -360,3 +407,34 @@ def save_all_integrated(
     )
 
     return None
+
+
+def save_all_images(
+    foldername,
+    raw_data_path="./ESRF_data/RAW_DATA/",
+    saved_data_path="./ESRF_data/SAVED_DATA/",
+    custom_range=range(27, 316),
+    custom_format="img",
+):
+    scan_list = custom_range
+
+    for scan_number in tqdm(scan_list):
+        image, metadata = extract_CdTe_data(
+            foldername,
+            scan_number,
+            display=False,
+            output_metadata=True,
+            raw_data_path=raw_data_path,
+        )
+
+        save_CdTe_data(
+            foldername,
+            scan_number,
+            image=image,
+            custom_format=custom_format,
+            saved_data_path="./ESRF_data/SAVED_DATA/",
+        )
+
+    print(
+        f"All CdTe data saved in {saved_data_path / pathlib.Path(foldername)} succesfully !"
+    )
