@@ -5,3 +5,5 @@ matplotlib
 tqdm
 ipykernel
 fabio
+ipywidgets
+pylab
