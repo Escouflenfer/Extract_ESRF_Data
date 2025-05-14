@@ -230,7 +230,7 @@ def extract_integrated_data(
     scan_number,
     display=True,
     processed_data_path="./ESRF_data/PROCESSED_DATA/",
-    scaling=1000,
+    scaling=1e9,
 ):
     """
     Extract integrated CdTe data from a processed .h5 data file of a scan.
@@ -263,10 +263,13 @@ def extract_integrated_data(
 
     with h5py.File(fullpath, "r") as fh5:
         counts = [
-            count * scaling
+            float(count) * scaling
             for count in fh5[f"{scan_number}.1/measurement/CdTe_integrated"][0]
         ]
         q_values = fh5[f"{scan_number}.1/CdTe_integrate/integrated/q"][()]
+        unit_q = fh5[f"{scan_number}.1/CdTe_integrate/integrated/q"].attrs["units"]
+        if unit_q == "nm^-1":
+            q_values = [float(q) / 10 for q in q_values]
         theta_values = _convert_from_q_to_theta(q_values)
 
     if display:
@@ -316,6 +319,7 @@ def save_integrated_data(
         except FileExistsError:
             pass
     fullpath = saved_data_path / pathlib.Path(
+        # f"{foldername}/{foldername.replace('_v2', '')}_{scan_number+221}.xy"
         f"{foldername}/{foldername}_{scan_number}.xy"
     )
 
@@ -351,6 +355,7 @@ def save_CdTe_data(
         except FileExistsError:
             pass
     fullpath = saved_data_path / pathlib.Path(
+        # f"{foldername}/{foldername.replace('_v2', '')}_{scan_number+221}.{custom_format}"
         f"{foldername}/{foldername}_{scan_number}.{custom_format}"
     )
 
