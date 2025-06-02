@@ -7,3 +7,5 @@ ipykernel
 fabio
 ipywidgets
 pylab
+scikit-image
+scikit-learn

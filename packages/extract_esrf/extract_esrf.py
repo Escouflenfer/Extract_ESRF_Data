@@ -15,7 +15,14 @@ import h5py, pathlib, os
 import fabio
 import numpy as np
 import matplotlib.pyplot as plt
+import ipywidgets as widgets
+import pathlib
+from ipywidgets import interact, fixed, IntSlider
+from matplotlib.colors import LogNorm, Normalize
+from pylab import figure, cm
 from tqdm import tqdm
+from skimage import filters
+from sklearn import datasets, linear_model
 
 
 def _convert_from_q_to_theta(q_list, wavelength=0.495937):
@@ -268,6 +275,8 @@ def extract_integrated_data(
         ]
         q_values = fh5[f"{scan_number}.1/CdTe_integrate/integrated/q"][()]
         unit_q = fh5[f"{scan_number}.1/CdTe_integrate/integrated/q"].attrs["units"]
+
+        # correction patch for q values in nm^-1, needs to be cleaner
         if unit_q == "nm^-1":
             q_values = [float(q) / 10 for q in q_values]
         theta_values = _convert_from_q_to_theta(q_values)
@@ -349,6 +358,27 @@ def save_CdTe_data(
     custom_format="img",
     saved_data_path="./ESRF_data/SAVED_DATA/",
 ):
+    """
+    Save a CdTe image to a specified file format.
+
+    Parameters
+    ----------
+    foldername : str
+        The name of the folder to save the image in
+    scan_number : int
+        The number of the scan for the image to save
+    image : 2D array
+        The image data to be saved
+    custom_format : str, optional
+        The file format to save the image in. Defaults to "img"
+    saved_data_path : str, optional
+        The path to the directory to save the image in. Defaults to "./ESRF_data/SAVED_DATA/"
+
+    Returns
+    -------
+    None
+    """
+
     if foldername not in os.listdir(saved_data_path):
         try:
             os.mkdir(saved_data_path / pathlib.Path(foldername))
@@ -421,6 +451,24 @@ def save_all_images(
     custom_range=range(27, 316),
     custom_format="img",
 ):
+    """
+    Save all CdTe data from a folder to .img files.
+
+    Parameters
+    ----------
+    foldername : str
+        The name of the folder to save the data in
+    saved_data_path : str, optional
+        The path to the directory to save the data in. Defaults to "./ESRF_data/SAVED_DATA/"
+    custom_range : list or range, optional
+        The range of scan numbers to save the data for. Defaults to range(27, 316)
+    custom_format : str, optional
+        The file format to save the data in. Defaults to "img"
+
+    Returns
+    -------
+    None
+    """
     scan_list = custom_range
 
     for scan_number in tqdm(scan_list):
@@ -443,3 +491,214 @@ def save_all_images(
     print(
         f"All CdTe data saved in {saved_data_path / pathlib.Path(foldername)} succesfully !"
     )
+
+
+def plot_img(
+    folderpath_str,
+    index,
+    img_data="None",
+    vmin=0,
+    vmax=60,
+    scale="normal",
+    aspect="1",
+    plot=True,
+):
+    """
+    Plot an image from either an .img file specified by folderpath_str and index, or a numpy array passed as img_data.
+
+    Parameters
+    ----------
+    folderpath_str : str
+        The path to the folder containing the .img files
+    index : int
+        The index of the .img file to read
+    img_data : str or numpy array, optional
+        The data to plot. If a string, read from an .img file. If a numpy array, plot that. Defaults to "None"
+    vmin : float, optional
+        The minimum value of the color scale. Defaults to 0
+    vmax : float, optional
+        The maximum value of the color scale. Defaults to 60
+    scale : str, optional
+        The scale of the color scale. Either "log" or "normal". Defaults to "normal"
+    aspect : str, optional
+        The aspect ratio of the plot. Defaults to "1"
+
+    Returns
+    -------
+    None
+    """
+
+    if isinstance(img_data, str):
+        folderpath = pathlib.Path(folderpath_str)
+        filepath = folderpath / f"{folderpath.name}_{index}.img"
+        img_file = fabio.open(filepath)
+        img_data = img_file.data
+
+    elif isinstance(img_data, np.ndarray):
+        img_file = fabio.dtrekimage.DtrekImage()
+        img_file.data = img_data
+
+    if not plot:
+        return img_data
+
+    f = figure(figsize=(6, 4), dpi=200)
+    ax = f.add_axes([0, 0, 1, 1])
+
+    if vmin > vmax:
+        vmin, vmax = vmax, vmin
+
+    if scale.lower() == "log":
+        im = ax.matshow(
+            img_data,
+            cmap=cm.rainbow,
+            norm=LogNorm(vmin=vmin, vmax=vmax),
+            aspect=aspect,
+        )  # Log scale
+    elif scale.lower() == "normal":
+        im = ax.matshow(
+            img_data,
+            cmap=cm.rainbow,
+            norm=Normalize(vmin=vmin, vmax=vmax),
+            aspect=aspect,
+        )  # Normal scale
+    else:
+        print("Invalid scale option. Please choose 'log' or 'normal'.")
+        return 1
+
+    f.colorbar(im, format="%1.0f")
+
+    return None
+
+
+def display_all_img(
+    folderpath_str, index=25, img_data="None", scale="normal", aspect="1"
+):
+    """
+    Display all .img files in a folder as an interactive plot.
+
+    Parameters
+    ----------
+    folderpath_str : str
+        The path to the folder containing the image files.
+    img_data : str or 2D array, optional
+        The data to be displayed. If a string, it should be the path to the folder containing the image files.
+        If a 2D array, it should be the data to be displayed directly. Defaults to "None".
+    scale : str, optional
+        The scale for the colorbar. Defaults to "normal".
+    aspect : str, optional
+        The aspect ratio of the image. Defaults to "1".
+
+    Returns
+    -------
+    None
+    """
+
+    index_slider = IntSlider(min=25, max=273, step=1, value=index)
+    vmin_slider = IntSlider(min=0, max=60, step=1, value=0)
+    vmax_slider = IntSlider(min=0, max=255, step=1, value=60)
+
+    interact(
+        plot_img,
+        folderpath_str=fixed(folderpath_str),
+        index=index_slider,
+        img_data=fixed(img_data),
+        vmin=vmin_slider,
+        vmax=vmax_slider,
+        scale=fixed(scale),
+        aspect=fixed(aspect),
+        plot=fixed(True),
+    )
+
+
+def fuse_all_img(folderpath_str, idx_range=range(25, 274)):
+    """
+    Fuse multiple image files into a single image by summing their data.
+
+    Parameters
+    ----------
+    folderpath_str : str
+        The path to the folder containing the image files.
+    idx_range : range, optional
+        The range of indices for the image files to be fused. Defaults to range(25, 274).
+
+    Returns
+    -------
+    fused_img : 2D array
+        The fused image data obtained by summing the individual image data.
+    """
+
+    folderpath = pathlib.Path(folderpath_str)
+
+    fused_img = []
+    for index in idx_range:
+        try:
+            filepath = folderpath / f"{folderpath.name}_{index}.img"
+            img_file = fabio.open(filepath)
+
+            if len(fused_img) == 0:
+                fused_img = img_file.data
+            else:
+                fused_img += img_file.data
+        except FileNotFoundError:
+            print(f"Warning, img file not found at position {index}")
+
+    return fused_img
+
+
+def remove_sample_holder_signal(img):
+    """
+    Remove the sample holder signal by keeping only the edges of the image.
+
+    Parameters
+    ----------
+    img : 2D array
+        The image data.
+
+    Returns
+    -------
+    edges : 2D array
+        The image data with the sample holder signal removed.
+    """
+
+    """ edges = filters.sobel(img)
+
+    factor = img.max() / edges.max()
+    edges = np.array([np.abs(px) * factor for px in [line for line in edges]]).reshape(
+        edges.shape
+    )
+
+    return edges """
+
+    # Reshape data into 1D arrays
+    indexes = np.array([i for i in range(img.shape[0] * img.shape[1])])
+    img_data = np.array([px for line in img for px in line])
+
+    print(indexes.shape)
+    print(img_data.shape)
+
+    print(indexes)
+    print(img_data)
+
+    # Using RANSAC alhorithm to remove outliers
+    ransac = linear_model.RANSACRegressor()
+    ransac.fit(indexes, img_data)
+    inlier_mask = ransac.inlier_mask_
+    outlier_mask = np.logical_not(inlier_mask)
+
+    # Plot outliers
+    plt.scatter(
+        indexes[inlier_mask],
+        img_data[inlier_mask],
+        color="yellowgreen",
+        marker=".",
+        label="Inliers",
+    )
+    plt.scatter(
+        indexes[outlier_mask],
+        img_data[outlier_mask],
+        color="gold",
+        marker=".",
+        label="Outliers",
+    )
+
+    plt.show()
