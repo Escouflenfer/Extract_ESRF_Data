@@ -485,7 +485,7 @@ def save_all_images(
             scan_number,
             image=image,
             custom_format=custom_format,
-            saved_data_path="./ESRF_data/SAVED_DATA/",
+            saved_data_path=saved_data_path,
         )
 
     print(
@@ -643,6 +643,34 @@ def fuse_all_img(folderpath_str, idx_range=range(25, 274)):
             print(f"Warning, img file not found at position {index}")
 
     return fused_img
+
+
+def detect_outliers(img):
+    """
+    Detect and remove outliers from an image.
+
+    Parameters
+    ----------
+    img : 2D array
+        The image data.
+
+    Returns
+    -------
+    img : 2D array
+        The image data with outliers removed.
+    """
+
+    # Reshape data into 1D arrays
+    indexes = np.array([i for i in range(img.shape[0] * img.shape[1])])
+    img_data = np.array([px for line in img for px in line])
+
+    # Using RANSAC alhorithm to remove outliers
+    ransac = linear_model.RANSACRegressor()
+    ransac.fit(indexes.reshape(-1, 1), img_data)
+    mask = ransac.inlier_mask_
+    img = img_data[mask].reshape(img.shape)
+
+    return img
 
 
 def remove_sample_holder_signal(img):
