@@ -21,8 +21,6 @@ from ipywidgets import interact, fixed, IntSlider
 from matplotlib.colors import LogNorm, Normalize
 from pylab import figure, cm
 from tqdm import tqdm
-from skimage import filters
-from sklearn import datasets, linear_model
 
 
 def _convert_from_q_to_theta(q_list, wavelength=0.495937):
@@ -645,88 +643,22 @@ def fuse_all_img(folderpath_str, idx_range=range(25, 274)):
     return fused_img
 
 
-def detect_outliers(img):
-    """
-    Detect and remove outliers from an image.
+def rewrite_to_hdf5(processed_data_path, foldername, scan_number, data, filter_name):
 
-    Parameters
-    ----------
-    img : 2D array
-        The image data.
-
-    Returns
-    -------
-    img : 2D array
-        The image data with outliers removed.
-    """
-
-    # Reshape data into 1D arrays
-    indexes = np.array([i for i in range(img.shape[0] * img.shape[1])])
-    img_data = np.array([px for line in img for px in line])
-
-    # Using RANSAC alhorithm to remove outliers
-    ransac = linear_model.RANSACRegressor()
-    ransac.fit(indexes.reshape(-1, 1), img_data)
-    mask = ransac.inlier_mask_
-    img = img_data[mask].reshape(img.shape)
-
-    return img
-
-
-def remove_sample_holder_signal(img):
-    """
-    Remove the sample holder signal by keeping only the edges of the image.
-
-    Parameters
-    ----------
-    img : 2D array
-        The image data.
-
-    Returns
-    -------
-    edges : 2D array
-        The image data with the sample holder signal removed.
-    """
-
-    """ edges = filters.sobel(img)
-
-    factor = img.max() / edges.max()
-    edges = np.array([np.abs(px) * factor for px in [line for line in edges]]).reshape(
-        edges.shape
+    filepath = processed_data_path / pathlib.Path(
+        f"{foldername}/{foldername}_0001/{foldername}_0001.h5"
     )
 
-    return edges """
+    with h5py.File(filepath, "a") as h5f:
+        group_path = f"{scan_number}.1/CdTe_integrate/integrated/"
+        try:
+            del h5f[group_path]["q"]
+            del h5f[group_path]["intensity"]
+            h5f[group_path]["q"] = data[0]
+            h5f[group_path]["intensity"] = data[1]
+            h5f[group_path]["intensity"].attrs["filter"] = filter_name
+        except KeyError:
+            print(f"group path {group_path} not found")
+            return 1
 
-    # Reshape data into 1D arrays
-    indexes = np.array([i for i in range(img.shape[0] * img.shape[1])])
-    img_data = np.array([px for line in img for px in line])
-
-    print(indexes.shape)
-    print(img_data.shape)
-
-    print(indexes)
-    print(img_data)
-
-    # Using RANSAC alhorithm to remove outliers
-    ransac = linear_model.RANSACRegressor()
-    ransac.fit(indexes, img_data)
-    inlier_mask = ransac.inlier_mask_
-    outlier_mask = np.logical_not(inlier_mask)
-
-    # Plot outliers
-    plt.scatter(
-        indexes[inlier_mask],
-        img_data[inlier_mask],
-        color="yellowgreen",
-        marker=".",
-        label="Inliers",
-    )
-    plt.scatter(
-        indexes[outlier_mask],
-        img_data[outlier_mask],
-        color="gold",
-        marker=".",
-        label="Outliers",
-    )
-
-    plt.show()
+    return 0

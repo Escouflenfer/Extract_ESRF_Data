@@ -2,10 +2,9 @@ h5py
 pathlib
 numpy
 matplotlib
-tqdm
 ipykernel
+tqdm
 fabio
 ipywidgets
-pylab
-scikit-image
-scikit-learn
+xrayutilities
+pyFAI
