@@ -655,7 +655,7 @@ def rewrite_to_hdf5(processed_data_path, foldername, scan_number, data, filter_n
             del h5f[group_path]["q"]
             del h5f[group_path]["intensity"]
             h5f[group_path]["q"] = data[0]
-            h5f[group_path]["intensity"] = data[1]
+            h5f[group_path]["intensity"] = [data[1]]
             h5f[group_path]["intensity"].attrs["filter"] = filter_name
         except KeyError:
             print(f"group path {group_path} not found")
