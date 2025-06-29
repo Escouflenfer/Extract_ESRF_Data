@@ -40,3 +40,7 @@ If you require support, have questions, want to report a bug, or want to suggest
 ## License
 
 MIT License
+
+## Acknowledgements
+
+This work was financed by the French National Research Agency through the « Datamag » project (ANR-22-CE91-0008) and the European Union through the MaMMoS project (Grant number 101135546, HORIZON-CL4-2023-DIGITAL-EMERGING-01)
