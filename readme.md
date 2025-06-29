@@ -8,7 +8,7 @@
 
 ## About
 
-Extract ESRF Data is coded in Python code with a Jupyter Notebook provided by Institut Néel under the MIAM Project (PEPR DIADEM).
+Extract ESRF Data is coded in Python code with a Jupyter Notebook provided by Institut Néel.
 Package used to vizualise and extract data from .h5 high-throughtput XRD data at BM02 (ESRF).
 You can contact me for any issues at william.rigaut@neel.cnrs.fr
 
