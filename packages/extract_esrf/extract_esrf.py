@@ -402,6 +402,7 @@ def save_all_integrated(
     processed_data_path="./ESRF_data/PROCESSED_DATA/",
     saved_data_path="./ESRF_data/SAVED_DATA/",
     custom_range=range(27, 316),
+    scaling=1e9,
 ):
     """
     Save all integrated data from a folder to .xy files.
@@ -425,6 +426,7 @@ def save_all_integrated(
             scan_number,
             processed_data_path=processed_data_path,
             display=False,
+            scaling=scaling,
         )
         save_integrated_data(
             foldername,
@@ -569,7 +571,13 @@ def plot_img(
 
 
 def display_all_img(
-    folderpath_str, index=25, img_data="None", scale="normal", aspect="1"
+    folderpath_str,
+    index=25,
+    img_data="None",
+    scale="normal",
+    aspect="1",
+    index_slider_min=25,
+    index_slider_max=273,
 ):
     """
     Display all .img files in a folder as an interactive plot.
@@ -591,7 +599,9 @@ def display_all_img(
     None
     """
 
-    index_slider = IntSlider(min=25, max=273, step=1, value=index)
+    index_slider = IntSlider(
+        min=index_slider_min, max=index_slider_max, step=1, value=index
+    )
     vmin_slider = IntSlider(min=0, max=60, step=1, value=0)
     vmax_slider = IntSlider(min=0, max=255, step=1, value=60)
 
