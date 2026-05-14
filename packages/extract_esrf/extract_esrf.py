@@ -180,6 +180,7 @@ def extract_CdTe_data(
     display=True,
     output_metadata=False,
     raw_data_path="./ESRF_data/RAW_DATA/",
+    suffix="0001",
 ):
     """
     Extract data from a CdTe detector at ESRF BM02.
@@ -202,10 +203,10 @@ def extract_CdTe_data(
     metadata : dict
         A dictionary of the metadata extracted from the file
     """
-    file = f"{foldername}_0001.h5"
+    file = f"{foldername}_{suffix}.h5"
     CdTe_img_group_path = f"{scan_number}.1/measurement/CdTe/"
     fullpath = raw_data_path / pathlib.Path(
-        foldername + "/" + foldername + "_0001/" + file
+        foldername + "/" + foldername + f"_{suffix}/" + file
     )
     if not output_metadata:
         print(f'Looking inside "{fullpath}" in group path "{CdTe_img_group_path}"')
@@ -236,6 +237,7 @@ def extract_integrated_data(
     display=True,
     processed_data_path="./ESRF_data/PROCESSED_DATA/",
     scaling=1e9,
+    suffix="0001",
 ):
     """
     Extract integrated CdTe data from a processed .h5 data file of a scan.
@@ -260,10 +262,10 @@ def extract_integrated_data(
     counts : list of floats
         The list of scaled counts from the integrated data
     """
-    file = f"{foldername}_0001.h5"
+    file = f"{foldername}_{suffix}.h5"
 
     fullpath = processed_data_path / pathlib.Path(
-        foldername + "/" + foldername + "_0001/" + file
+        foldername + "/" + foldername + f"_{suffix}/" + file
     )
 
     with h5py.File(fullpath, "r") as fh5:
@@ -297,6 +299,7 @@ def save_integrated_data(
     save_metadata=False,
     raw_data_path="./ESRF_data/RAW_DATA/",
     saved_data_path="./ESRF_data/SAVED_DATA/",
+    suffix="0001",
 ):
     """
     Save the integrated data from a scan to a .xy file.
@@ -337,6 +340,7 @@ def save_integrated_data(
             display=False,
             output_metadata=True,
             raw_data_path=raw_data_path,
+            suffix=suffix,
         )
 
     with open(fullpath, "w") as sf:
@@ -376,7 +380,6 @@ def save_CdTe_data(
     -------
     None
     """
-
     if foldername not in os.listdir(saved_data_path):
         try:
             os.mkdir(saved_data_path / pathlib.Path(foldername))
@@ -391,6 +394,7 @@ def save_CdTe_data(
     img_file = fabio.dtrekimage.DtrekImage()
     img_file.data = image
 
+    # print(img_file)
     img_file.save(fullpath)
 
     return None
@@ -403,6 +407,7 @@ def save_all_integrated(
     saved_data_path="./ESRF_data/SAVED_DATA/",
     custom_range=range(27, 316),
     scaling=1e9,
+    suffix="0001",
 ):
     """
     Save all integrated data from a folder to .xy files.
@@ -421,12 +426,14 @@ def save_all_integrated(
     scan_list = custom_range
 
     for scan_number in tqdm(scan_list):
+        print(scan_number)
         data = extract_integrated_data(
             foldername,
             scan_number,
             processed_data_path=processed_data_path,
             display=False,
             scaling=scaling,
+            suffix=suffix,
         )
         save_integrated_data(
             foldername,
@@ -435,6 +442,7 @@ def save_all_integrated(
             save_metadata=True,
             raw_data_path=raw_data_path,
             saved_data_path=saved_data_path,
+            suffix=suffix,
         )
 
     print(
@@ -450,6 +458,7 @@ def save_all_images(
     saved_data_path="./ESRF_data/SAVED_DATA/",
     custom_range=range(27, 316),
     custom_format="img",
+    suffix="0001",
 ):
     """
     Save all CdTe data from a folder to .img files.
@@ -478,6 +487,7 @@ def save_all_images(
             display=False,
             output_metadata=True,
             raw_data_path=raw_data_path,
+            suffix=suffix,
         )
 
         save_CdTe_data(
@@ -653,10 +663,12 @@ def fuse_all_img(folderpath_str, idx_range=range(25, 274)):
     return fused_img
 
 
-def rewrite_to_hdf5(processed_data_path, foldername, scan_number, data, filter_name):
+def rewrite_to_hdf5(
+    processed_data_path, foldername, scan_number, data, filter_name, suffix="0001"
+):
 
     filepath = processed_data_path / pathlib.Path(
-        f"{foldername}/{foldername}_0001/{foldername}_0001.h5"
+        f"{foldername}/{foldername}_{suffix}/{foldername}_{suffix}.h5"
     )
 
     with h5py.File(filepath, "a") as h5f:
