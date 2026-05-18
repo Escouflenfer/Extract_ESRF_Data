@@ -8,3 +8,6 @@ fabio
 ipywidgets
 xrayutilities
 pyFAI
+plotly
+nbformat
+pandas
